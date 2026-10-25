@@ -1,0 +1,6 @@
+{
+  "server_status": "online", 
+  "offline_message": "⚠️ সার্ভার মেইনটেন্যান্স চলছে! খুব শীঘ্রই আমরা ফিরছি।",
+  "latest_version": "2.5",
+  "update_url": "https://yourwebsite.com/download"
+}
