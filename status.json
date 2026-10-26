@@ -1,6 +1,6 @@
 {
-  "server_status": "offline",
-  "latest_version": "2.6",
+  "server_status": "online",
+  "latest_version": "2.5",
   "valid_keys": {
     "PP-DEMO-2026": {
       "device_id": "DEV-QO7U-989",
