@@ -3,7 +3,7 @@
   "latest_version": "2.5",
   "valid_keys": {
     "PP-DEMO-2026": {
-      "device_id": "ANY",
+      "device_id": "DEV-QO7U-989",
       "expiry": "2026-12-31",
       "status": "active"
     }
