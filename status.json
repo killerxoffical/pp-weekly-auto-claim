@@ -1,6 +1,16 @@
 {
   "server_status": "online",
   "offline_message": "⚠️ সার্ভার মেইনটেন্যান্স চলছে! খুব শীঘ্রই আমরা ফিরছি।",
-  "latest_version": "2.4",
-  "update_url": "https://github.com/killerxoffical/pp-weekly-auto-claim"
+  "latest_version": "2.5",
+  "update_url": "https://github.com/killerxoffical/pp-weekly-auto-claim",
+  "valid_keys": {
+    "PP-DEMO-2026": {
+      "expiry": "2026-12-31",
+      "status": "active"
+    },
+    "VIP-BLACK-777": {
+      "expiry": "2026-06-30",
+      "status": "active"
+    }
+  }
 }
