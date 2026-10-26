@@ -2,14 +2,9 @@
   "server_status": "online",
   "latest_version": "2.5",
   "valid_keys": {
-    "VIP-KEY-01": {
-      "device_id": "DEV-8F42",
+    "PP-DEMO-2026": {
+      "device_id": "ANY",
       "expiry": "2026-12-31",
-      "status": "active"
-    },
-    "PP-DEMO": {
-      "device_id": "DEV-3Z1O-307",
-      "expiry": "2027-12-31",
       "status": "active"
     }
   }
