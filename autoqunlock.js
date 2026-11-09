@@ -1,5 +1,5 @@
 /**
- * Auto Token Finder & Achievement Unlocker for Termux (Node.js)
+ * Interactive Google Play Achievement Unlocker with Account Picker (Node.js)
  * GitHub: https://github.com/killerxoffical/pp-weekly-auto-claim
  */
 
@@ -14,18 +14,16 @@ const rl = readline.createInterface({
     output: process.stdout
 });
 
-// ১. সিস্টেম বা রুট থেকে টোকেন খোঁজার ফাংশন
-function extractTokensFromSystem() {
-    console.log("\n🔍 ব্লুস্ট্যাকস / রুট থেকে অ্যাকাউন্ট ও টোকেন স্ক্যান করা হচ্ছে...");
-    
-    // su_bins ডিফাইন করা হলো
+// ১. ব্লুস্ট্যাকস থেকে লগইন করা গুগল অ্যাকাউন্টগুলোর (Gmail) লিস্ট বের করার ফাংশন
+function getGoogleAccounts() {
+    console.log("\n🔍 ব্লুস্ট্যাকস থেকে লগইন করা অ্যাকাউন্টগুলো খোঁজা হচ্ছে...");
     const su_bins = ["/system/xbin/bstk/su", "/system/xbin/su", "/sbin/su", "su"];
     const dbs = [
         "/data/system/users/0/accounts.db",
         "/data/system_ce/0/accounts_ce.db"
     ];
     
-    let directToks = [];
+    let accounts = [];
     let selectedSu = null;
 
     for (let su of su_bins) {
@@ -37,7 +35,7 @@ function extractTokensFromSystem() {
     }
 
     if (!selectedSu) {
-        console.log("❌ রুট পারমিশন (su) পাওয়া যায়নি! অ্যান্ড্রয়েড সিকিউরিটির কারণে ডাইরেক্ট রিড করা সম্ভব নয়।");
+        console.log("❌ রুট পারমিশন (su) পাওয়া যায়নি!");
         return [];
     }
 
@@ -48,24 +46,25 @@ function extractTokensFromSystem() {
             execSync(cmd);
 
             if (fs.existsSync(tmpPath)) {
-                const grepCmd = `strings ${tmpPath} | grep -E '^ya29\\.'`;
+                // accounts.db থেকে জিমেইল নাম এক্সট্র্যাক্ট করা
+                const grepCmd = `strings ${tmpPath} | grep -E '^[a-zA-Z0-9._%+-]+@gmail\\.com$'`;
                 const result = execSync(grepCmd).toString();
-                const tokens = result.split('\n').filter(t => t.startsWith('ya29.'));
+                const emails = result.split('\n').filter(e => e.includes('@gmail.com'));
                 
-                if (tokens.length > 0) {
-                    directToks.push(...tokens);
+                if (emails.length > 0) {
+                    accounts.push(...emails);
                 }
                 fs.unlinkSync(tmpPath);
             }
         } catch (err) {}
     }
 
-    return [...new Set(directToks)];
+    return [...new Set(accounts)];
 }
 
 // ২. গুগল এপিআই দিয়ে অ্যাচিভমেন্ট আনলক করার ফাংশন
 async function unlockAchievements(token) {
-    console.log(`\n⚡ টোকেন ব্যবহার করে আনলক করা হচ্ছে...`);
+    console.log(`\n⚡ টোকেন দিয়ে গেমের অ্যাচিভমেন্ট আনলক করা হচ্ছে...`);
     const optionsGet = {
         hostname: 'www.googleapis.com',
         path: '/games/v1/players/me/achievements?maxResults=200',
@@ -180,31 +179,56 @@ function sendUnlockRequest(token, updates) {
     reqPost.end();
 }
 
-// ৩. টার্মিনাল মেনু সিস্টেম
+// ৩. টার্মিনাল মেনু ও অ্যাকাউন্ট পিকার সিস্টেম
 function promptMenu() {
     console.log("\n==========================================");
     console.log("   🎮 GOOGLE PLAY GAMES ACHIEVEMENT UNLOCKER");
     console.log("==========================================");
-    console.log(" [xt] Auto Extract Token from System");
+    console.log(" [xt] Select Account & Unlock Achievements");
     console.log(" [mt] Enter Bearer Token Manually (ya29...)");
     console.log(" [ex] Exit / Quit");
     console.log("==========================================");
     
-    rl.question("👉 অপশন সিলেক্ট করুন (যেমন: xt বা mt): ", (answer) => {
+    rl.question("👉 আপনার কমান্ড লিখুন: ", (answer) => {
         const cmd = answer.trim().toLowerCase();
         
         if (cmd === "xt") {
-            const tokens = extractTokensFromSystem();
-            if (tokens.length === 0) {
-                console.log("❌ সিস্টেম থেকে কোনো টোকেন পাওয়া যায়নি! দয়া করে [mt] অপশন ব্যবহার করে ম্যানুয়াল টোকেন দিন।");
+            const accounts = getGoogleAccounts();
+            if (accounts.length === 0) {
+                console.log("❌ কোনো জিমেইল অ্যাকাউন্ট পাওয়া যায়নি! দয়া করে [mt] দিয়ে ম্যানুয়াল টোকেন ব্যবহার করুন।");
                 promptMenu();
-            } else {
-                console.log(`\n✅ মোট ${tokens.length}টি টোকেন পাওয়া গেছে:`);
-                tokens.forEach((t, index) => {
-                    console.log(` ${index + 1}. ${t}`);
-                });
-                unlockAchievements(tokens[0]);
+                return;
             }
+
+            console.log("\n📋 ব্লুস্ট্যাক্সে লগইন করা অ্যাকাউন্টসমূহ:");
+            accounts.forEach((acc, index) => {
+                const charKey = String.fromCharCode(97 + index); // a, b, c, d...
+                console.log(`  [${charKey}] ${acc}`);
+            });
+
+            rl.question("\n👉 যেকোনো একটি অ্যাকাউন্ট সিলেক্ট করুন (যেমন: a, b): ", (choice) => {
+                const selectedIndex = choice.trim().toLowerCase().charCodeAt(0) - 97;
+                if (selectedIndex >= 0 && selectedIndex < accounts.length) {
+                    const chosenEmail = accounts[selectedIndex];
+                    console.log(`\n✅ আপনি সিলেক্ট করেছেন: ${chosenEmail}`);
+                    
+                    // অ্যান্ড্রয়েড সিকিউরিটির কারণে সরাসরি টোকেন জেনারেট করা না গেলে টোকেন ইনপুট চাওয়া হবে
+                    rl.question(`👉 '${chosenEmail}' এর ya29... টোকেনটি এখানে পেস্ট করুন: `, (tokenInput) => {
+                        const token = tokenInput.trim();
+                        if (token.startsWith("ya29.")) {
+                            unlockAchievements(token);
+                        } else {
+                            console.log("❌ ভুল টোকেন! এটি অবশ্যই 'ya29.' দিয়ে শুরু হতে হবে।");
+                            promptMenu();
+                        }
+                    });
+
+                } else {
+                    console.log("❌ ভুল সিলেক্ট করেছেন!");
+                    promptMenu();
+                }
+            });
+
         } else if (cmd === "mt") {
             rl.question("👉 আপনার ya29... টোকেনটি এখানে পেস্ট করুন: ", (tokenInput) => {
                 const token = tokenInput.trim();
@@ -220,7 +244,7 @@ function promptMenu() {
             rl.close();
             process.exit(0);
         } else {
-            console.log("❌ ভুল কমান্ড! দয়া করে সঠিক কমান্ড দিন।");
+            console.log("❌ ভুল কমান্ড!");
             promptMenu();
         }
     });
