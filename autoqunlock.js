@@ -1,5 +1,6 @@
 /**
- * Interactive Google Play Achievement Unlocker v3.5 (Live GitHub Fetch)
+ * Interactive Google Play Achievement Unlocker
+ * Updated Version: 2.0 (Live GitHub Fetch)
  * GitHub: https://github.com/killerxoffical/pp-weekly-auto-claim
  */
 
@@ -11,12 +12,12 @@ const rl = readline.createInterface({
     output: process.stdout
 });
 
-// কালারফুল ও প্রফেশনাল হেডার ডিজাইন
+// কালারফুল ও প্রফেশনাল হেডার ডিজাইন (যেখানে আপডেট ভার্সন শো করবে)
 function printHeader() {
     console.clear();
     console.log("\x1b[35m==================================================\x1b[0m");
     console.log("\x1b[36m   🎮 GOOGLE PLAY GAMES ACHIEVEMENT UNLOCKER\x1b[0m");
-    console.log("\x1b[33m             [ Version 3.5 - Live ]             \x1b[0m");
+    console.log("\x1b[33m             [ Updated Version 2.0 ]            \x1b[0m");
     console.log("\x1b[35m==================================================\x1b[0m");
     console.log(" \x1b[32m[a]\x1b[0m Select Account & Unlock Achievements");
     console.log(" \x1b[32m[b]\x1b[0m Enter Bearer Token Manually (ya29...)");
@@ -24,7 +25,7 @@ function printHeader() {
     console.log("\x1b[35m==================================================\x1b[0m");
 }
 
-// আপনার জিমেইল অ্যাকাউন্টগুলোর লিস্ট (এখানে আপনার ইচ্ছামতো জিমেইল বসিয়ে নিতে পারেন)
+// আপনার জিমেইল অ্যাকাউন্টগুলোর লিস্ট
 function getGoogleAccounts() {
     return [
         "primary_gaming_acc@gmail.com",
@@ -150,7 +151,7 @@ function sendUnlockRequest(token, updates) {
     reqPost.end();
 }
 
-// প্রফেশনাল মেনু ও একাউন্ট পিকার সিস্টেম
+// প্রফেশনাল মেনু সিস্টেম
 function promptMenu() {
     printHeader();
     rl.question("\x1b[32m👉 আপনার অপশন সিলেক্ট করুন (a, b, q):\x1b[0m ", (answer) => {
