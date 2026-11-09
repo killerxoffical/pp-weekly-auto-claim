@@ -1,6 +1,6 @@
 /**
  * Interactive Google Play Achievement Unlocker
- * Updated Version: 2.3 (System Dumpsys Account Scanner)
+ * Updated Version: 2.4 (Multi-Engine Account Scanner)
  * GitHub: https://github.com/killerxoffical/pp-weekly-auto-claim
  */
 
@@ -13,12 +13,11 @@ const rl = readline.createInterface({
     output: process.stdout
 });
 
-// কালারফুল ও প্রফেশনাল হেডার ডিজাইন
 function printHeader() {
     console.clear();
     console.log("\x1b[35m==================================================\x1b[0m");
     console.log("\x1b[36m   🎮 GOOGLE PLAY GAMES ACHIEVEMENT UNLOCKER\x1b[0m");
-    console.log("\x1b[33m             [ Updated Version 2.3 ]            \x1b[0m");
+    console.log("\x1b[33m             [ Updated Version 2.4 ]            \x1b[0m");
     console.log("\x1b[35m==================================================\x1b[0m");
     console.log(" \x1b[32m[a]\x1b[0m Select Account & Unlock Achievements");
     console.log(" \x1b[32m[b]\x1b[0m Enter Bearer Token Manually (ya29...)");
@@ -26,13 +25,12 @@ function printHeader() {
     console.log("\x1b[35m==================================================\x1b[0m");
 }
 
-// অ্যান্ড্রয়েড সিস্টেম মেমোরি (dumpsys) থেকে রিয়েল জিমেইলগুলো স্ক্যান করার ফাংশন
+// মাল্টি-ইঞ্জিন অ্যাকাউন্ট স্ক্যানার
 function getGoogleAccounts() {
     const suBins = ["/system/xbin/bstk/su", "/system/xbin/su", "/sbin/su", "su"];
     let accounts = [];
     let selectedSu = "";
 
-    // সু (su) বাইনারি খোঁজা
     for (let su of suBins) {
         try {
             execSync(`${su} -v`, { stdio: 'ignore' });
@@ -41,36 +39,42 @@ function getGoogleAccounts() {
         } catch (e) {}
     }
 
-    // ১. সু (su) দিয়ে dumpsys account কমান্ড রান করা (সবচেয়ে সফল পদ্ধতি)
-    if (selectedSu) {
+    if (!selectedSu) return [];
+
+    // মেথড ১: ফুল পাথসহ dumpsys কল করা
+    const dumpsysPaths = ["/system/bin/dumpsys", "dumpsys"];
+    for (let dPath of dumpsysPaths) {
         try {
-            const output = execSync(`${selectedSu} -c "dumpsys account"`).toString();
-            const matches = output.match(/Account\s*\{\s*name\s*=\s*([^, ]+@[^, ]+)/gi);
-            if (matches) {
-                matches.forEach(m => {
-                    const email = m.split('=')[1].trim();
-                    if (email.includes('@')) accounts.push(email);
-                });
-            }
+            const out = execSync(`${selectedSu} -c "${dPath} account"`).toString();
+            const matches = out.match(/[a-zA-Z0-9._%+-]+@gmail\.com/gi);
+            if (matches) matches.forEach(em => accounts.push(em.trim()));
+            if (accounts.length > 0) break;
         } catch (e) {}
     }
 
-    // ২. সাধারণ dumpsys ট্রাই করা (যদি সু ছাড়া কাজ করে)
+    // মেথড ২: Google Play Services এর প্রিফারেন্স ফাইল থেকে সরাসরি গ্র্যাব করা
     if (accounts.length === 0) {
         try {
-            const output = execSync("dumpsys account 2>/dev/null").toString();
-            const matches = output.match(/[a-zA-Z0-9._%+-]+@gmail\.com/gi);
-            if (matches) {
-                matches.forEach(em => accounts.push(em.trim()));
-            }
+            const cmd = `${selectedSu} -c "grep -Eroh '[a-zA-Z0-9._%+-]+@gmail\\.com' /data/data/com.google.android.gms/shared_prefs/ 2>/dev/null"`;
+            const out = execSync(cmd).toString();
+            const matches = out.match(/[a-zA-Z0-9._%+-]+@gmail\.com/gi);
+            if (matches) matches.forEach(em => accounts.push(em.trim()));
         } catch (e) {}
     }
 
-    // ৩. ইউনিক ইমেইল ফিল্টার করা
+    // মেথড ৩: ব্লুস্ট্যাকসের sync বা account স্টোরেজ থেকে
+    if (accounts.length === 0) {
+        try {
+            const cmd = `${selectedSu} -c "grep -Eroh '[a-zA-Z0-9._%+-]+@gmail\\.com' /data/system/users/ 2>/dev/null"`;
+            const out = execSync(cmd).toString();
+            const matches = out.match(/[a-zA-Z0-9._%+-]+@gmail\.com/gi);
+            if (matches) matches.forEach(em => accounts.push(em.trim()));
+        } catch (e) {}
+    }
+
     return [...new Set(accounts)];
 }
 
-// গুগল এপিআই দিয়ে অ্যাচিভমেন্ট আনলক করার ফাংশন
 async function unlockAchievements(token) {
     console.log(`\n\x1b[33m⚡ কানেক্টিং গুগল এপিআই (Google Play Games API)...\x1b[0m`);
     const optionsGet = {
@@ -187,7 +191,6 @@ function sendUnlockRequest(token, updates) {
     reqPost.end();
 }
 
-// প্রফেশনাল মেনু সিস্টেম
 function promptMenu() {
     printHeader();
     rl.question("\x1b[32m👉 আপনার অপশন সিলেক্ট করুন (a, b, q):\x1b[0m ", (answer) => {
@@ -198,8 +201,8 @@ function promptMenu() {
             const accounts = getGoogleAccounts();
             
             if (accounts.length === 0) {
-                console.log("\n\x1b[31m❌ সিস্টেম থেকে কোনো জিমেইল অ্যাকাউন্ট পাওয়া যায়নি!\x1b[0m");
-                console.log("\x1b[33m💡 টিপস: আপনি অপশন [b] ব্যবহার করে ম্যানুয়ালি টোকেন দিতে পারেন।\x1b[0m");
+                console.log("\n\x1b[31m❌ কোনো জিমেইল অ্যাকাউন্ট খুঁজে পাওয়া যায়নি!\x1b[0m");
+                console.log("\x1b[33m💡 অপশন [b] সিলেক্ট করে সরাসরি আপনার ya29... টোকেন পেস্ট করুন।\x1b[0m");
                 setTimeout(promptMenu, 3000);
                 return;
             }
@@ -213,7 +216,6 @@ function promptMenu() {
 
             rl.question("\n\x1b[32m👉 যেকোনো একটি অ্যাকাউন্ট সিলেক্ট করুন (যেমন: a, b):\x1b[0m ", (choice) => {
                 const choiceTrim = choice.trim().toLowerCase();
-                
                 if (choiceTrim === "x") {
                     promptMenu();
                     return;
