@@ -1,6 +1,6 @@
 /**
  * Interactive Google Play Achievement Unlocker
- * Updated Version: 2.5 (100% Fully Automated Token & Unlock)
+ * Updated Version: 3.0 (Clean Filter & Pure Auto Token)
  * GitHub: https://github.com/killerxoffical/pp-weekly-auto-claim
  */
 
@@ -17,7 +17,7 @@ function printHeader() {
     console.clear();
     console.log("\x1b[35m==================================================\x1b[0m");
     console.log("\x1b[36m   🎮 GOOGLE PLAY GAMES ACHIEVEMENT UNLOCKER\x1b[0m");
-    console.log("\x1b[33m       [ Updated Version 2.5 - Full Auto ]      \x1b[0m");
+    console.log("\x1b[33m       [ Updated Version 3.0 - Clean Engine ]     \x1b[0m");
     console.log("\x1b[35m==================================================\x1b[0m");
     console.log(" \x1b[32m[a]\x1b[0m Auto Extract Token & Unlock Selected Account");
     console.log(" \x1b[32m[b]\x1b[0m Enter Bearer Token Manually (Optional)");
@@ -36,43 +36,65 @@ function getSuBinary() {
     return null;
 }
 
-// জিমেইল অ্যাকাউন্টগুলো খোঁজার ফাংশন
+// শুধুমাত্র পিওর আসল জিমেইল অ্যাকাউন্টগুলো ফিল্টার করার ফাংশন
 function getGoogleAccounts() {
     const su = getSuBinary();
     if (!su) return [];
 
-    let accounts = [];
-    try {
-        const cmd = `${su} -c "grep -Eroh '[a-zA-Z0-9._%+-]+@gmail\\.com' /data/data/com.google.android.gms/shared_prefs/ 2>/dev/null"`;
-        const out = execSync(cmd).toString();
-        const matches = out.match(/[a-zA-Z0-9._%+-]+@gmail\.com/gi);
-        if (matches) matches.forEach(em => accounts.push(em.trim()));
-    } catch (e) {}
+    let pureEmails = new Set();
+    
+    // একাধিক সোর্স থেকে টেক্সট এক্সট্র্যাক্ট
+    const commands = [
+        `${su} -c "sqlite3 /data/system_ce/0/accounts_ce.db 'SELECT name FROM accounts WHERE type=\\\"com.google\\\"' 2>/dev/null"`,
+        `${su} -c "sqlite3 /data/system/users/0/accounts.db 'SELECT name FROM accounts WHERE type=\\\"com.google\\\"' 2>/dev/null"`,
+        `${su} -c "grep -Eroh '[a-zA-Z0-9._%+-]+@gmail\\.com' /data/data/com.google.android.gms/shared_prefs/ 2>/dev/null"`
+    ];
 
-    return [...new Set(accounts)];
+    for (let cmd of commands) {
+        try {
+            const out = execSync(cmd).toString();
+            const matches = out.match(/[a-zA-Z0-9._%+-]+@gmail\.com/gi);
+            if (matches) {
+                matches.forEach(email => {
+                    const clean = email.trim().toLowerCase();
+                    // সিস্টেম প্রিফিক্স এবং আবর্জনা পুরোপুরি ব্লক করা হলো
+                    if (!clean.includes("last_config") && 
+                        !clean.includes("scheduled_sync") && 
+                        !clean.includes("focus_") && 
+                        !clean.includes("feature_list") && 
+                        !clean.includes("ongoing_sync") &&
+                        !clean.includes("com.google")) {
+                        pureEmails.add(clean);
+                    }
+                });
+            }
+        } catch (e) {}
+    }
+
+    return Array.from(pureEmails);
 }
 
-// নির্বাচিত জিমেইল থেকে ব্লুস্ট্যাকসের ভেতর দিয়ে স্বয়ংক্রিয়ভাবে টোকেন বের করার ফাংশন
+// নির্বাচিত অ্যাকাউন্টের লাইভ ya29 টোকেন ব্লুস্ট্যাকসের ক্যাশ ও ডাটাবেজ থেকে বের করা
 function autoExtractTokenForAccount(email) {
     const su = getSuBinary();
     if (!su) return null;
 
-    console.log(`\n\x1b[33m🔑 '${email}' এর টোকেন রুট স্টোরেজ থেকে বের করা হচ্ছে...\x1b[0m`);
+    console.log(`\n\x1b[33m🔍 '${email}' এর লাইভ টোকেন ব্লুস্ট্যাকস থেকে বের করা হচ্ছে...\x1b[0m`);
     
-    // ব্লুস্ট্যাকসের ডাটাবেজ এবং ক্যাশ থেকে টোকেন খোঁজা
-    const targets = [
-        "/data/system/users/0/accounts.db",
-        "/data/system_ce/0/accounts_ce.db",
-        "/data/data/com.google.android.gms/databases/",
-        "/data/data/com.google.android.gms/shared_prefs/"
+    // ব্লুস্ট্যাকসের SQLite এবং ক্যাশ ডাটাবেজ স্ক্যান
+    const tokenQueries = [
+        `${su} -c "sqlite3 /data/system_ce/0/accounts_ce.db 'SELECT authtoken FROM authtokens WHERE authtoken LIKE \\\"ya29.%\\\"' 2>/dev/null"`,
+        `${su} -c "sqlite3 /data/system/users/0/accounts.db 'SELECT authtoken FROM authtokens WHERE authtoken LIKE \\\"ya29.%\\\"' 2>/dev/null"`,
+        `${su} -c "grep -Eroh 'ya29\\.[a-zA-Z0-9_\\-]+' /data/data/com.google.android.gms/ 2>/dev/null | head -n 1"`,
+        `${su} -c "grep -Eroh 'ya29\\.[a-zA-Z0-9_\\-]+' /data/data/com.google.android.play.games/ 2>/dev/null | head -n 1"`
     ];
 
-    for (let path of targets) {
+    for (let q of tokenQueries) {
         try {
-            const cmd = `${su} -c "strings ${path} 2>/dev/null | grep -E '^ya29\\.[a-zA-Z0-9_-]+' | head -n 1"`;
-            const token = execSync(cmd).toString().trim();
-            if (token && token.startsWith("ya29.")) {
-                return token;
+            const res = execSync(q).toString().trim();
+            const tokens = res.match(/ya29\.[a-zA-Z0-9_\-]+/g);
+            if (tokens && tokens.length > 0) {
+                return tokens[0];
             }
         } catch (e) {}
     }
@@ -80,9 +102,8 @@ function autoExtractTokenForAccount(email) {
     return null;
 }
 
-// গুগল এপিআই দিয়ে অ্যাচিভমেন্ট আনলক করার ফাংশন
 async function unlockAchievements(token) {
-    console.log(`\n\x1b[32m⚡ টোকেন পাওয়া গেছে! গুগল প্লে সার্ভারে আনলক রিকোয়েস্ট পাঠানো হচ্ছে...\x1b[0m`);
+    console.log(`\n\x1b[32m⚡ টোকেন সফলভাবে ক্যাপচার হয়েছে! গুগল প্লে এপিআই কল করা হচ্ছে...\x1b[0m`);
     const optionsGet = {
         hostname: 'www.googleapis.com',
         path: '/games/v1/players/me/achievements?maxResults=200',
@@ -99,7 +120,7 @@ async function unlockAchievements(token) {
         res.on('data', (chunk) => { body += chunk; });
         res.on('end', () => {
             if (res.statusCode === 401) {
-                console.log("\n\x1b[31m❌ টোকেনটির মেয়াদ শেষ হয়ে গেছে বা সঠিক পারমিশন নেই!\x1b[0m");
+                console.log("\n\x1b[31m❌ টোকেনটি Expired হয়ে গেছে! ব্লুস্ট্যাকসে গেমটি মিনিমাইজ করে আবার ওপেন করুন।\x1b[0m");
                 setTimeout(promptMenu, 3000);
                 return;
             }
@@ -114,7 +135,7 @@ async function unlockAchievements(token) {
                 const items = data.items || [];
 
                 if (items.length === 0) {
-                    console.log("\n\x1b[33m⚠️ এই অ্যাকাউন্টে কোনো গেমের অ্যাচিভমেন্ট পাওয়া যায়নি!\x1b[0m");
+                    console.log("\n\x1b[33m⚠️ এই অ্যাকাউন্টে কোনো গেমের অ্যাচিভমেন্ট লিস্ট পাওয়া যায়নি!\x1b[0m");
                     setTimeout(promptMenu, 3000);
                     return;
                 }
@@ -133,7 +154,7 @@ async function unlockAchievements(token) {
                     return;
                 }
 
-                console.log(`\n\x1b[32m🎯 মোট ${updates.length}টি নতুন অ্যাচিভমেন্ট স্বয়ংক্রিয়ভাবে আনলক করা হচ্ছে...\x1b[0m`);
+                console.log(`\n\x1b[32m🎯 মোট ${updates.length}টি নতুন অ্যাচিভমেন্ট পাওয়া গেছে, আনলক করা হচ্ছে...\x1b[0m`);
                 sendUnlockRequest(token, updates);
 
             } catch (e) {
@@ -177,9 +198,9 @@ function sendUnlockRequest(token, updates) {
                 try {
                     const resData = JSON.parse(body);
                     const count = (resData.achievementUpdateStatuses || []).length;
-                    console.log(`\n\x1b[32m🎉 সফল! স্বয়ংক্রিয়ভাবে ${count}টি অ্যাচিভমেন্ট আনলক হয়েছে!\x1b[0m`);
+                    console.log(`\n\x1b[32m🎉 অভিনন্দন! মোট ${count}টি অ্যাচিভমেন্ট স্বয়ংক্রিয়ভাবে আনলক হয়েছে!\x1b[0m`);
                 } catch (e) {
-                    console.log("\n\x1b[32m🎉 সফলভাবে রিকোয়েস্ট সম্পন্ন হয়েছে!\x1b[0m");
+                    console.log("\n\x1b[32m🎉 সফলভাবে আনলক সম্পন্ন হয়েছে!\x1b[0m");
                 }
             } else {
                 console.log(`\n\x1b[31m❌ আনলক ফেইল (HTTP ${res.statusCode}): ${body.substring(0, 100)}\x1b[0m`);
@@ -205,41 +226,38 @@ function promptMenu() {
         if (cmd === "a") {
             const accounts = getGoogleAccounts();
             if (accounts.length === 0) {
-                console.log("\n\x1b[31m❌ কোনো জিমেইল অ্যাকাউন্ট পাওয়া যায়নি!\x1b[0m");
+                console.log("\n\x1b[31m❌ কোনো পিওর জিমেইল অ্যাকাউন্ট পাওয়া যায়নি!\x1b[0m");
                 setTimeout(promptMenu, 3000);
                 return;
             }
 
-            console.log("\n\x1b[36m📋 ব্লুস্ট্যাক্সে লগইন করা রিয়েল অ্যাকাউন্টসমূহ:\x1b[0m");
+            console.log("\n\x1b[36m📋 ব্লুস্ট্যাক্সে লগইন করা আসল জিমেইলসমূহ:\x1b[0m");
             accounts.forEach((acc, index) => {
-                const charKey = String.fromCharCode(97 + index); // a, b, c...
-                console.log(`  \x1b[33m[${charKey}]\x1b[0m ${acc}`);
+                console.log(`  \x1b[33m[${index + 1}]\x1b[0m ${acc}`);
             });
-            console.log("  \x1b[31m[x]\x1b[0m Back to Main Menu");
+            console.log("  \x1b[31m[0]\x1b[0m Back to Main Menu");
 
-            rl.question("\n\x1b[32m👉 যেকোনো একটি অ্যাকাউন্ট সিলেক্ট করুন (যেমন: a, b): \x1b[0m", async (choice) => {
-                const choiceTrim = choice.trim().toLowerCase();
-                if (choiceTrim === "x") {
+            rl.question("\n\x1b[32m👉 অ্যাকাউন্টের নাম্বার লিখুন (যেমন: 1, 2, 3...): \x1b[0m", async (choice) => {
+                const choiceNum = parseInt(choice.trim());
+                if (choiceNum === 0) {
                     promptMenu();
                     return;
                 }
 
-                const selectedIndex = choiceTrim.charCodeAt(0) - 97;
-                if (selectedIndex >= 0 && selectedIndex < accounts.length) {
-                    const chosenEmail = accounts[selectedIndex];
+                if (choiceNum > 0 && choiceNum <= accounts.length) {
+                    const chosenEmail = accounts[choiceNum - 1];
                     console.log(`\n\x1b[32m✅ সিলেক্ট করা হয়েছে:\x1b[0m ${chosenEmail}`);
                     
-                    // সিস্টেম থেকে সম্পূর্ণ অটোম্যাটিক টোকেন বের করবে
                     const autoToken = autoExtractTokenForAccount(chosenEmail);
                     if (autoToken) {
                         await unlockAchievements(autoToken);
                     } else {
-                        console.log("\n\x1b[31m⚠️ স্বয়ংক্রিয়ভাবে লাইভ টোকেন পাওয়া যায়নি! ব্লুস্ট্যাকসে একবার Google Play Games অ্যাপ ওপেন করে আবার ট্রাই করুন।\x1b[0m");
+                        console.log("\n\x1b[31m⚠️ লাইভ ya29 টোকেন ডাটাবেজে পাওয়া যায়নি! দয়া করে ব্লুস্ট্যাকসে একবার Google Play Games ওপেন রাখুন।\x1b[0m");
                         setTimeout(promptMenu, 3500);
                     }
 
                 } else {
-                    console.log("\n\x1b[31m❌ ভুল সিলেকশন!\x1b[0m");
+                    console.log("\n\x1b[31m❌ ভুল নাম্বার সিলেক্ট করেছেন!\x1b[0m");
                     setTimeout(promptMenu, 2500);
                 }
             });
