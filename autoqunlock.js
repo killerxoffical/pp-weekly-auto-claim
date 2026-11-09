@@ -1,5 +1,5 @@
 /**
- * Interactive Token Finder & Achievement Unlocker for Termux (Node.js)
+ * Auto Token Finder & Achievement Unlocker for Termux (Node.js)
  * GitHub: https://github.com/killerxoffical/pp-weekly-auto-claim
  */
 
@@ -17,7 +17,9 @@ const rl = readline.createInterface({
 // ১. সিস্টেম বা রুট থেকে টোকেন খোঁজার ফাংশন
 function extractTokensFromSystem() {
     console.log("\n🔍 ব্লুস্ট্যাকস / রুট থেকে অ্যাকাউন্ট ও টোকেন স্ক্যান করা হচ্ছে...");
-    const suBins = ["/system/xbin/bstk/su", "/system/xbin/su", "/sbin/su", "su"];
+    
+    // su_bins ডিফাইন করা হলো
+    const su_bins = ["/system/xbin/bstk/su", "/system/xbin/su", "/sbin/su", "su"];
     const dbs = [
         "/data/system/users/0/accounts.db",
         "/data/system_ce/0/accounts_ce.db"
@@ -35,7 +37,7 @@ function extractTokensFromSystem() {
     }
 
     if (!selectedSu) {
-        console.log("❌ রুট পারমিশন (su) পাওয়া যায়নি! দয়া করে রুট এনভায়রনমেন্টে রান করুন।");
+        console.log("❌ রুট পারমিশন (su) পাওয়া যায়নি! অ্যান্ড্রয়েড সিকিউরিটির কারণে ডাইরেক্ট রিড করা সম্ভব নয়।");
         return [];
     }
 
@@ -183,26 +185,36 @@ function promptMenu() {
     console.log("\n==========================================");
     console.log("   🎮 GOOGLE PLAY GAMES ACHIEVEMENT UNLOCKER");
     console.log("==========================================");
-    console.log(" [xt] Auto Extract Token & Unlock Achievements");
+    console.log(" [xt] Auto Extract Token from System");
+    console.log(" [mt] Enter Bearer Token Manually (ya29...)");
     console.log(" [ex] Exit / Quit");
     console.log("==========================================");
     
-    rl.question("👉 আপনার কমান্ড লিখুন (যেমন: xt): ", (answer) => {
+    rl.question("👉 অপশন সিলেক্ট করুন (যেমন: xt বা mt): ", (answer) => {
         const cmd = answer.trim().toLowerCase();
         
         if (cmd === "xt") {
             const tokens = extractTokensFromSystem();
             if (tokens.length === 0) {
-                console.log("❌ কোনো টোকেন পাওয়া যায়নি!");
+                console.log("❌ সিস্টেম থেকে কোনো টোকেন পাওয়া যায়নি! দয়া করে [mt] অপশন ব্যবহার করে ম্যানুয়াল টোকেন দিন।");
                 promptMenu();
             } else {
                 console.log(`\n✅ মোট ${tokens.length}টি টোকেন পাওয়া গেছে:`);
                 tokens.forEach((t, index) => {
                     console.log(` ${index + 1}. ${t}`);
                 });
-                // প্রথম টোকেনটি দিয়ে আনলক প্রসেস শুরু করবে
                 unlockAchievements(tokens[0]);
             }
+        } else if (cmd === "mt") {
+            rl.question("👉 আপনার ya29... টোকেনটি এখানে পেস্ট করুন: ", (tokenInput) => {
+                const token = tokenInput.trim();
+                if (token.startsWith("ya29.")) {
+                    unlockAchievements(token);
+                } else {
+                    console.log("❌ ভুল টোকেন! টোকেন অবশ্যই 'ya29.' দিয়ে শুরু হতে হবে।");
+                    promptMenu();
+                }
+            });
         } else if (cmd === "ex" || cmd === "exit") {
             console.log("👋 প্রগ্রাম বন্ধ করা হলো। ভালো থাকবেন!");
             rl.close();
@@ -214,6 +226,5 @@ function promptMenu() {
     });
 }
 
-// প্রোগ্রাম রান করার এন্ট্রি পয়েন্ট
 console.clear();
 promptMenu();
