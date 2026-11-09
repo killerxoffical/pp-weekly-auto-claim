@@ -1,12 +1,9 @@
 /**
- * Interactive Google Play Achievement Unlocker v2.0 (Node.js)
+ * Interactive Google Play Achievement Unlocker v3.0 (Node.js)
  * GitHub: https://github.com/killerxoffical/pp-weekly-auto-claim
  */
 
-const { execSync } = require('child_process');
 const https = require('https');
-const fs = require('fs');
-const path = require('path');
 const readline = require('readline');
 
 const rl = readline.createInterface({
@@ -19,7 +16,7 @@ function printHeader() {
     console.clear();
     console.log("\x1b[36m==========================================\x1b[0m");
     console.log("\x1b[32m   🎮 GOOGLE PLAY GAMES ACHIEVEMENT UNLOCKER\x1b[0m");
-    console.log("\x1b[33m           [ Version 2.0 - Live ]         \x1b[0m");
+    console.log("\x1b[33m           [ Version 3.0 - Live ]         \x1b[0m");
     console.log("\x1b[36m==========================================\x1b[0m");
     console.log(" \x1b[35m[xt]\x1b[0m Select Account & Unlock Achievements");
     console.log(" \x1b[35m[mt]\x1b[0m Enter Bearer Token Manually (ya29...)");
@@ -27,51 +24,14 @@ function printHeader() {
     console.log("\x1b[36m==========================================\x1b[0m");
 }
 
-// অ্যাকাউন্ট খোঁজার ফাংশন (যদি সিস্টেম থেকে না পায়, তবে ম্যানুয়াল অ্যাকাউন্ট লিস্ট বা টোকেন অপশন দেবে)
+// ডিফল্ট বা আপনার ব্লুস্ট্যাকসের জিমেইল অ্যাকাউন্টগুলোর লিস্ট (এখানে আপনার অ্যাকাউন্টগুলো দেখতে পাবেন)
 function getGoogleAccounts() {
-    const su_bins = ["/system/xbin/bstk/su", "/system/xbin/su", "/sbin/su", "su"];
-    const dbs = [
-        "/data/system/users/0/accounts.db",
-        "/data/system_ce/0/accounts_ce.db",
-        "/data/system_de/0/accounts_de.db"
+    // আপনি চাইলে এখানে আপনার ব্লুস্ট্যাকসে লগইন করা জিমেইলগুলো বসাতে পারেন, অথবা এটি ডিফল্ট লিস্ট দেখাবে
+    return [
+        "your_primary_account@gmail.com",
+        "second_gaming_account@gmail.com",
+        "bluestacks_user_acc@gmail.com"
     ];
-    
-    let accounts = [];
-    let selectedSu = null;
-
-    for (let su of su_bins) {
-        try {
-            execSync(`${su} -v`, { stdio: 'ignore' });
-            selectedSu = su;
-            break;
-        } catch (e) {}
-    }
-
-    if (selectedSu) {
-        for (let db of dbs) {
-            try {
-                const tmpPath = path.join(require('os').tmpdir(), 'bs_acc.db');
-                const cmd = `${selectedSu} -c "cat ${db}" > ${tmpPath} 2>/dev/null`;
-                execSync(cmd);
-
-                if (fs.existsSync(tmpPath)) {
-                    if (fs.statSync(tmpPath).size > 100) {
-                        const result = execSync(`strings ${tmpPath} | grep -E '^[a-zA-Z0-9._%+-]+@gmail\\.com$'`).toString();
-                        const emails = result.split('\n').filter(e => e.includes('@gmail.com'));
-                        if (emails.length > 0) accounts.push(...emails);
-                    }
-                    fs.unlinkSync(tmpPath);
-                }
-            } catch (err) {}
-        }
-    }
-
-    // যদি সিস্টেম থেকে অ্যাকাউন্ট না পাওয়া যায়, তবে সুন্দর একটি ডিফল্ট লিস্ট দেখাবে যাতে ইউজার আটকে না যায়
-    if (accounts.length === 0) {
-        return ["BlueStacks_User_1@gmail.com", "Manual_Google_Account@gmail.com"];
-    }
-
-    return [...new Set(accounts)];
 }
 
 // গুগল এপিআই দিয়ে অ্যাচিভমেন্ট আনলক করার ফাংশন
@@ -205,8 +165,17 @@ function promptMenu() {
                 console.log(`  \x1b[33m[${charKey}]\x1b[0m ${acc}`);
             });
 
+            console.log("  \x1b[33m[x]\x1b[0m Back to Main Menu");
+
             rl.question("\n\x1b[32m👉 যেকোনো একটি অ্যাকাউন্ট সিলেক্ট করুন (যেমন: a, b):\x1b[0m ", (choice) => {
-                const selectedIndex = choice.trim().toLowerCase().charCodeAt(0) - 97;
+                const choiceTrim = choice.trim().toLowerCase();
+                
+                if (choiceTrim === "x") {
+                    promptMenu();
+                    return;
+                }
+
+                const selectedIndex = choiceTrim.charCodeAt(0) - 97;
                 if (selectedIndex >= 0 && selectedIndex < accounts.length) {
                     const chosenEmail = accounts[selectedIndex];
                     console.log(`\n\x1b[32m✅ সিলেক্ট করা হয়েছে:\x1b[0m ${chosenEmail}`);
