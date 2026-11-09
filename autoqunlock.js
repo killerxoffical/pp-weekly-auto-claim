@@ -1,6 +1,6 @@
 /**
  * Interactive Google Play Achievement Unlocker
- * Updated Version: 2.1 (Real Account Scanner)
+ * Updated Version: 2.2 (Real Account Scanner & Live Fetch)
  * GitHub: https://github.com/killerxoffical/pp-weekly-auto-claim
  */
 
@@ -15,12 +15,12 @@ const rl = readline.createInterface({
     output: process.stdout
 });
 
-// কালারফুল ও প্রফেশনাল হেডার ডিজাইন
+// কালারফুল ও প্রফেশনাল হেডার ডিজাইন (যেখানে নতুন ভার্সন শো করবে)
 function printHeader() {
     console.clear();
     console.log("\x1b[35m==================================================\x1b[0m");
     console.log("\x1b[36m   🎮 GOOGLE PLAY GAMES ACHIEVEMENT UNLOCKER\x1b[0m");
-    console.log("\x1b[33m             [ Updated Version 2.1 ]            \x1b[0m");
+    console.log("\x1b[33m             [ Updated Version 2.2 ]            \x1b[0m");
     console.log("\x1b[35m==================================================\x1b[0m");
     console.log(" \x1b[32m[a]\x1b[0m Select Account & Unlock Achievements");
     console.log(" \x1b[32m[b]\x1b[0m Enter Bearer Token Manually (ya29...)");
@@ -177,7 +177,7 @@ function sendUnlockRequest(token, updates) {
                     console.log("\n\x1b[32m🎉 সফলভাবে রিকোয়েস্ট সম্পন্ন হয়েছে!\x1b[0m");
                 }
             } else {
-                console.log(`\n\x1b[31m❌ আনলক ফেইল (HTTP ${res.statusCode}): ${body.substring(0, 100)}\x1b[0m`;
+                console.log(`\n\x1b[31m❌ আনলক ফেইল (HTTP ${res.statusCode}): ${body.substring(0, 100)}\x1b[0m`);
             }
             setTimeout(promptMenu, 3000);
         });
