@@ -1,5 +1,5 @@
 /**
- * Interactive Google Play Achievement Unlocker (Node.js)
+ * Interactive Google Play Achievement Unlocker with Multi-Path Account Finder (Node.js)
  * GitHub: https://github.com/killerxoffical/pp-weekly-auto-claim
  */
 
@@ -14,13 +14,17 @@ const rl = readline.createInterface({
     output: process.stdout
 });
 
-// ১. ব্লুস্ট্যাক্স থেকে লগইন করা গুগল অ্যাকাউন্টগুলো (Gmail) বের করার ফাংশন
+// ব্লুস্ট্যাকসের সব সম্ভাব্য অ্যাকাউন্ট ডাটাবেজ পাথ স্ক্যান করার ফাংশন
 function getGoogleAccounts() {
     console.log("\n🔍 ব্লুস্ট্যাকস থেকে লগইন করা অ্যাকাউন্টগুলো খোঁজা হচ্ছে...");
     const su_bins = ["/system/xbin/bstk/su", "/system/xbin/su", "/sbin/su", "su"];
+    
+    // ব্লুস্ট্যাকসের বিভিন্ন অ্যান্ড্রয়েড ভার্সনের জন্য একাধিক পাথ
     const dbs = [
         "/data/system/users/0/accounts.db",
-        "/data/system_ce/0/accounts_ce.db"
+        "/data/system_ce/0/accounts_ce.db",
+        "/data/system_de/0/accounts_de.db",
+        "/data/system/accounts.db"
     ];
     
     let accounts = [];
@@ -42,16 +46,20 @@ function getGoogleAccounts() {
     for (let db of dbs) {
         try {
             const tmpPath = path.join(require('os').tmpdir(), 'bs_acc.db');
-            const cmd = `${selectedSu} -c "cat ${db}" > ${tmpPath}`;
+            // ব্লুস্ট্যাকসে সু (su) দিয়ে ফাইল পড়ার চেষ্টা
+            const cmd = `${selectedSu} -c "cat ${db}" > ${tmpPath} 2>/dev/null`;
             execSync(cmd);
 
             if (fs.existsSync(tmpPath)) {
-                const grepCmd = `strings ${tmpPath} | grep -E '^[a-zA-Z0-9._%+-]+@gmail\\.com$'`;
-                const result = execSync(grepCmd).toString();
-                const emails = result.split('\n').filter(e => e.includes('@gmail.com'));
-                
-                if (emails.length > 0) {
-                    accounts.push(...emails);
+                const size = fs.statSync(tmpPath).size;
+                if (size > 100) {
+                    const grepCmd = `strings ${tmpPath} | grep -E '^[a-zA-Z0-9._%+-]+@gmail\\.com$'`;
+                    const result = execSync(grepCmd).toString();
+                    const emails = result.split('\n').filter(e => e.includes('@gmail.com'));
+                    
+                    if (emails.length > 0) {
+                        accounts.push(...emails);
+                    }
                 }
                 fs.unlinkSync(tmpPath);
             }
@@ -61,7 +69,7 @@ function getGoogleAccounts() {
     return [...new Set(accounts)];
 }
 
-// ২. গুগল এপিআই দিয়ে অ্যাচিভমেন্ট আনলক করার ফাংশন
+// গুগল এপিআই দিয়ে অ্যাচিভমেন্ট আনলক করার ফাংশন
 async function unlockAchievements(token) {
     console.log(`\n⚡ টোকেন দিয়ে গেমের অ্যাচিভমেন্ট আনলক করা হচ্ছে...`);
     const optionsGet = {
@@ -178,7 +186,7 @@ function sendUnlockRequest(token, updates) {
     reqPost.end();
 }
 
-// ৩. টার্মিনাল মেনু সিস্টেম
+// টার্মিনাল মেনু সিস্টেম
 function promptMenu() {
     console.log("\n==========================================");
     console.log("   🎮 GOOGLE PLAY GAMES ACHIEVEMENT UNLOCKER");
@@ -194,14 +202,15 @@ function promptMenu() {
         if (cmd === "xt") {
             const accounts = getGoogleAccounts();
             if (accounts.length === 0) {
-                console.log("❌ কোনো জিমেইল অ্যাকাউন্ট পাওয়া যায়নি! দয়া করে [mt] দিয়ে ম্যানুয়াল টোকেন দিন।");
+                console.log("\n❌ সিস্টেম থেকে সরাসরি জিমেইল অ্যাকাউন্ট ফেচ করা যায়নি!");
+                console.log("💡 টিপস: আপনি সরাসরি [mt] অপশন ব্যবহার করে আপনার ya29... টোকেন দিয়ে কাজ করতে পারেন।");
                 promptMenu();
                 return;
             }
 
             console.log("\n📋 ব্লুস্ট্যাক্সে লগইন করা অ্যাকাউন্টসমূহ:");
             accounts.forEach((acc, index) => {
-                const charKey = String.fromCharCode(97 + index); // a, b, c, d...
+                const charKey = String.fromCharCode(97 + index); // a, b, c...
                 console.log(`  [${charKey}] ${acc}`);
             });
 
