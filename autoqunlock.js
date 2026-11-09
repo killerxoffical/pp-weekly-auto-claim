@@ -1,5 +1,5 @@
 /**
- * Interactive Google Play Achievement Unlocker with Account Picker (Node.js)
+ * Interactive Google Play Achievement Unlocker (Node.js)
  * GitHub: https://github.com/killerxoffical/pp-weekly-auto-claim
  */
 
@@ -14,7 +14,7 @@ const rl = readline.createInterface({
     output: process.stdout
 });
 
-// ১. ব্লুস্ট্যাকস থেকে লগইন করা গুগল অ্যাকাউন্টগুলোর (Gmail) লিস্ট বের করার ফাংশন
+// ১. ব্লুস্ট্যাক্স থেকে লগইন করা গুগল অ্যাকাউন্টগুলো (Gmail) বের করার ফাংশন
 function getGoogleAccounts() {
     console.log("\n🔍 ব্লুস্ট্যাকস থেকে লগইন করা অ্যাকাউন্টগুলো খোঁজা হচ্ছে...");
     const su_bins = ["/system/xbin/bstk/su", "/system/xbin/su", "/sbin/su", "su"];
@@ -46,7 +46,6 @@ function getGoogleAccounts() {
             execSync(cmd);
 
             if (fs.existsSync(tmpPath)) {
-                // accounts.db থেকে জিমেইল নাম এক্সট্র্যাক্ট করা
                 const grepCmd = `strings ${tmpPath} | grep -E '^[a-zA-Z0-9._%+-]+@gmail\\.com$'`;
                 const result = execSync(grepCmd).toString();
                 const emails = result.split('\n').filter(e => e.includes('@gmail.com'));
@@ -179,7 +178,7 @@ function sendUnlockRequest(token, updates) {
     reqPost.end();
 }
 
-// ৩. টার্মিনাল মেনু ও অ্যাকাউন্ট পিকার সিস্টেম
+// ৩. টার্মিনাল মেনু সিস্টেম
 function promptMenu() {
     console.log("\n==========================================");
     console.log("   🎮 GOOGLE PLAY GAMES ACHIEVEMENT UNLOCKER");
@@ -195,7 +194,7 @@ function promptMenu() {
         if (cmd === "xt") {
             const accounts = getGoogleAccounts();
             if (accounts.length === 0) {
-                console.log("❌ কোনো জিমেইল অ্যাকাউন্ট পাওয়া যায়নি! দয়া করে [mt] দিয়ে ম্যানুয়াল টোকেন ব্যবহার করুন।");
+                console.log("❌ কোনো জিমেইল অ্যাকাউন্ট পাওয়া যায়নি! দয়া করে [mt] দিয়ে ম্যানুয়াল টোকেন দিন।");
                 promptMenu();
                 return;
             }
@@ -212,7 +211,6 @@ function promptMenu() {
                     const chosenEmail = accounts[selectedIndex];
                     console.log(`\n✅ আপনি সিলেক্ট করেছেন: ${chosenEmail}`);
                     
-                    // অ্যান্ড্রয়েড সিকিউরিটির কারণে সরাসরি টোকেন জেনারেট করা না গেলে টোকেন ইনপুট চাওয়া হবে
                     rl.question(`👉 '${chosenEmail}' এর ya29... টোকেনটি এখানে পেস্ট করুন: `, (tokenInput) => {
                         const token = tokenInput.trim();
                         if (token.startsWith("ya29.")) {
