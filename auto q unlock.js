@@ -1,5 +1,5 @@
 /**
- * Auto Token Finder & Achievement Unlocker (Node.js)
+ * Interactive Token Finder & Achievement Unlocker for Termux (Node.js)
  * GitHub: https://github.com/killerxoffical/pp-weekly-auto-claim
  */
 
@@ -7,10 +7,16 @@ const { execSync } = require('child_process');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const readline = require('readline');
 
-// ১. ব্লুস্ট্যাক্স রুট থেকে টোকেন বা অ্যাকাউন্ট খোঁজার ফাংশন
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+
+// ১. সিস্টেম বা রুট থেকে টোকেন খোঁজার ফাংশন
 function extractTokensFromSystem() {
-    console.log("🔍 ব্লুস্ট্যাকস থেকে অ্যাকাউন্ট ও টোকেন খোঁজা হচ্ছে...");
+    console.log("\n🔍 ব্লুস্ট্যাকস / রুট থেকে অ্যাকাউন্ট ও টোকেন স্ক্যান করা হচ্ছে...");
     const suBins = ["/system/xbin/bstk/su", "/system/xbin/su", "/sbin/su", "su"];
     const dbs = [
         "/data/system/users/0/accounts.db",
@@ -29,7 +35,7 @@ function extractTokensFromSystem() {
     }
 
     if (!selectedSu) {
-        console.log("⚠️ রুট পারমিশন (su) পাওয়া যায়নি! সরাসরি টোকেন ইনপুট দিতে হবে।");
+        console.log("❌ রুট পারমিশন (su) পাওয়া যায়নি! দয়া করে রুট এনভায়রনমেন্টে রান করুন।");
         return [];
     }
 
@@ -40,8 +46,6 @@ function extractTokensFromSystem() {
             execSync(cmd);
 
             if (fs.existsSync(tmpPath)) {
-                // SQLite ডাটাবেজ থেকে ya29 টোকেন খোঁজার জন্য বেসিক কমান্ড
-                // (নোট: নোড জেএসে sqlite3 মডিউল না থাকলে চাইল্ড প্রসেস দিয়ে স্ট্রিং গ্র্যাব করা হয়)
                 const grepCmd = `strings ${tmpPath} | grep -E '^ya29\\.'`;
                 const result = execSync(grepCmd).toString();
                 const tokens = result.split('\n').filter(t => t.startsWith('ya29.'));
@@ -51,18 +55,15 @@ function extractTokensFromSystem() {
                 }
                 fs.unlinkSync(tmpPath);
             }
-        } catch (err) {
-            // ইগনোর এরর
-        }
+        } catch (err) {}
     }
 
     return [...new Set(directToks)];
 }
 
-// ২. অ্যাচিভমেন্ট আনলক করার ফাংশন
+// ২. গুগল এপিআই দিয়ে অ্যাচিভমেন্ট আনলক করার ফাংশন
 async function unlockAchievements(token) {
-    console.log(`⚡ টোকেন দিয়ে আনলক করা হচ্ছে: ${token.substring(0, 15)}...`);
-
+    console.log(`\n⚡ টোকেন ব্যবহার করে আনলক করা হচ্ছে...`);
     const optionsGet = {
         hostname: 'www.googleapis.com',
         path: '/games/v1/players/me/achievements?maxResults=200',
@@ -80,10 +81,12 @@ async function unlockAchievements(token) {
         res.on('end', () => {
             if (res.statusCode === 401) {
                 console.log("❌ টোকেনটি মেয়াদোত্তীর্ণ (Expired) অথবা ভুল!");
+                promptMenu();
                 return;
             }
             if (res.statusCode !== 200) {
                 console.log(`❌ API Error (HTTP ${res.statusCode}): ${body.substring(0, 100)}`);
+                promptMenu();
                 return;
             }
 
@@ -93,6 +96,7 @@ async function unlockAchievements(token) {
 
                 if (items.length === 0) {
                     console.log("⚠️ এই অ্যাকাউন্টে কোনো গেমের অ্যাচিভমেন্ট পাওয়া যায়নি!");
+                    promptMenu();
                     return;
                 }
 
@@ -106,20 +110,23 @@ async function unlockAchievements(token) {
 
                 if (updates.length === 0) {
                     console.log("✅ সবগুলো অ্যাচিভমেন্ট আগেই আনলক করা আছে!");
+                    promptMenu();
                     return;
                 }
 
-                console.log(`🎯 ${updates.length}টি নতুন অ্যাচিভমেন্ট পাওয়া গেছে, আনলক করা হচ্ছে...`);
+                console.log(`🎯 মোট ${updates.length}টি নতুন অ্যাচিভমেন্ট আনলক করা হচ্ছে...`);
                 sendUnlockRequest(token, updates);
 
             } catch (e) {
                 console.log("❌ JSON Parse Error:", e.message);
+                promptMenu();
             }
         });
     });
 
     reqGet.on('error', (e) => {
         console.error(`❌ Request Error: ${e.message}`);
+        promptMenu();
     });
 
     reqGet.end();
@@ -158,36 +165,55 @@ function sendUnlockRequest(token, updates) {
             } else {
                 console.log(`❌ আনলক ফেইল (HTTP ${res.statusCode}): ${body.substring(0, 100)}`);
             }
+            promptMenu();
         });
     });
 
     reqPost.on('error', (e) => {
         console.error(`❌ Post Error: ${e.message}`);
+        promptMenu();
     });
 
     reqPost.write(postData);
     reqPost.end();
 }
 
-// ৩. মেইন প্রসেস রান করা
-async function main() {
-    console.log("🚀 অটো টোকেন ফাইন্ডার এবং আনলকার শুরু হয়েছে...");
-    const tokens = extractTokensFromSystem();
-
-    if (tokens.length === 0) {
-        console.log("❌ সিস্টেম থেকে কোনো টোকেন খুঁজে পাওয়া যায়নি।");
-        return;
-    }
-
-    console.log(`✅ মোট ${tokens.length}টি টোকেন পাওয়া গেছে।`);
-    for (let token of tokens) {
-        await unlockAchievement(token); // Fix typo call
-    }
+// ৩. টার্মিনাল মেনু সিস্টেম
+function promptMenu() {
+    console.log("\n==========================================");
+    console.log("   🎮 GOOGLE PLAY GAMES ACHIEVEMENT UNLOCKER");
+    console.log("==========================================");
+    console.log(" [xt] Auto Extract Token & Unlock Achievements");
+    console.log(" [ex] Exit / Quit");
+    console.log("==========================================");
+    
+    rl.question("👉 আপনার কমান্ড লিখুন (যেমন: xt): ", (answer) => {
+        const cmd = answer.trim().toLowerCase();
+        
+        if (cmd === "xt") {
+            const tokens = extractTokensFromSystem();
+            if (tokens.length === 0) {
+                console.log("❌ কোনো টোকেন পাওয়া যায়নি!");
+                promptMenu();
+            } else {
+                console.log(`\n✅ মোট ${tokens.length}টি টোকেন পাওয়া গেছে:`);
+                tokens.forEach((t, index) => {
+                    console.log(` ${index + 1}. ${t}`);
+                });
+                // প্রথম টোকেনটি দিয়ে আনলক প্রসেস শুরু করবে
+                unlockAchievements(tokens[0]);
+            }
+        } else if (cmd === "ex" || cmd === "exit") {
+            console.log("👋 প্রগ্রাম বন্ধ করা হলো। ভালো থাকবেন!");
+            rl.close();
+            process.exit(0);
+        } else {
+            console.log("❌ ভুল কমান্ড! দয়া করে সঠিক কমান্ড দিন।");
+            promptMenu();
+        }
+    });
 }
 
-// ছোট ফাংশন নেম কারেকশন
-async function unlockAchievement(token) {
-    await unlockAchievements(token);
-}
-
-main();
+// প্রোগ্রাম রান করার এন্ট্রি পয়েন্ট
+console.clear();
+promptMenu();
