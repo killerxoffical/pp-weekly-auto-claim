@@ -1,13 +1,11 @@
 /**
  * Interactive Google Play Achievement Unlocker
- * Updated Version: 2.2 (Real Account Scanner & Live Fetch)
+ * Updated Version: 2.3 (System Dumpsys Account Scanner)
  * GitHub: https://github.com/killerxoffical/pp-weekly-auto-claim
  */
 
 const { execSync } = require('child_process');
 const https = require('https');
-const fs = require('fs');
-const path = require('path');
 const readline = require('readline');
 
 const rl = readline.createInterface({
@@ -15,12 +13,12 @@ const rl = readline.createInterface({
     output: process.stdout
 });
 
-// কালারফুল ও প্রফেশনাল হেডার ডিজাইন (যেখানে নতুন ভার্সন শো করবে)
+// কালারফুল ও প্রফেশনাল হেডার ডিজাইন
 function printHeader() {
     console.clear();
     console.log("\x1b[35m==================================================\x1b[0m");
     console.log("\x1b[36m   🎮 GOOGLE PLAY GAMES ACHIEVEMENT UNLOCKER\x1b[0m");
-    console.log("\x1b[33m             [ Updated Version 2.2 ]            \x1b[0m");
+    console.log("\x1b[33m             [ Updated Version 2.3 ]            \x1b[0m");
     console.log("\x1b[35m==================================================\x1b[0m");
     console.log(" \x1b[32m[a]\x1b[0m Select Account & Unlock Achievements");
     console.log(" \x1b[32m[b]\x1b[0m Enter Bearer Token Manually (ya29...)");
@@ -28,20 +26,14 @@ function printHeader() {
     console.log("\x1b[35m==================================================\x1b[0m");
 }
 
-// ব্লুস্ট্যাকসের রুট ডাটাবেজ থেকে রিয়েল জিমেইল অ্যাকাউন্টগুলো স্ক্যান করার ফাংশন
+// অ্যান্ড্রয়েড সিস্টেম মেমোরি (dumpsys) থেকে রিয়েল জিমেইলগুলো স্ক্যান করার ফাংশন
 function getGoogleAccounts() {
-    const su_bins = ["/system/xbin/bstk/su", "/system/xbin/su", "/sbin/su", "su"];
-    const dbs = [
-        "/data/system/users/0/accounts.db",
-        "/data/system_ce/0/accounts_ce.db",
-        "/data/system_de/0/accounts_de.db",
-        "/data/system/accounts.db"
-    ];
-    
+    const suBins = ["/system/xbin/bstk/su", "/system/xbin/su", "/sbin/su", "su"];
     let accounts = [];
-    let selectedSu = null;
+    let selectedSu = "";
 
-    for (let su of su_bins) {
+    // সু (su) বাইনারি খোঁজা
+    for (let su of suBins) {
         try {
             execSync(`${su} -v`, { stdio: 'ignore' });
             selectedSu = su;
@@ -49,29 +41,32 @@ function getGoogleAccounts() {
         } catch (e) {}
     }
 
-    if (!selectedSu) {
-        return [];
-    }
-
-    for (let db of dbs) {
+    // ১. সু (su) দিয়ে dumpsys account কমান্ড রান করা (সবচেয়ে সফল পদ্ধতি)
+    if (selectedSu) {
         try {
-            const tmpPath = path.join(require('os').tmpdir(), 'bs_acc.db');
-            const cmd = `${selectedSu} -c "cat ${db}" > ${tmpPath} 2>/dev/null`;
-            execSync(cmd);
-
-            if (fs.existsSync(tmpPath)) {
-                if (fs.statSync(tmpPath).size > 100) {
-                    const result = execSync(`strings ${tmpPath} | grep -E '^[a-zA-Z0-9._%+-]+@gmail\\.com$'`).toString();
-                    const emails = result.split('\n').filter(e => e.includes('@gmail.com'));
-                    if (emails.length > 0) {
-                        accounts.push(...emails);
-                    }
-                }
-                fs.unlinkSync(tmpPath);
+            const output = execSync(`${selectedSu} -c "dumpsys account"`).toString();
+            const matches = output.match(/Account\s*\{\s*name\s*=\s*([^, ]+@[^, ]+)/gi);
+            if (matches) {
+                matches.forEach(m => {
+                    const email = m.split('=')[1].trim();
+                    if (email.includes('@')) accounts.push(email);
+                });
             }
-        } catch (err) {}
+        } catch (e) {}
     }
 
+    // ২. সাধারণ dumpsys ট্রাই করা (যদি সু ছাড়া কাজ করে)
+    if (accounts.length === 0) {
+        try {
+            const output = execSync("dumpsys account 2>/dev/null").toString();
+            const matches = output.match(/[a-zA-Z0-9._%+-]+@gmail\.com/gi);
+            if (matches) {
+                matches.forEach(em => accounts.push(em.trim()));
+            }
+        } catch (e) {}
+    }
+
+    // ৩. ইউনিক ইমেইল ফিল্টার করা
     return [...new Set(accounts)];
 }
 
