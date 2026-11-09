@@ -1,10 +1,13 @@
 /**
  * Interactive Google Play Achievement Unlocker
- * Updated Version: 2.0 (Live GitHub Fetch)
+ * Updated Version: 2.1 (Real Account Scanner)
  * GitHub: https://github.com/killerxoffical/pp-weekly-auto-claim
  */
 
+const { execSync } = require('child_process');
 const https = require('https');
+const fs = require('fs');
+const path = require('path');
 const readline = require('readline');
 
 const rl = readline.createInterface({
@@ -12,12 +15,12 @@ const rl = readline.createInterface({
     output: process.stdout
 });
 
-// কালারফুল ও প্রফেশনাল হেডার ডিজাইন (যেখানে আপডেট ভার্সন শো করবে)
+// কালারফুল ও প্রফেশনাল হেডার ডিজাইন
 function printHeader() {
     console.clear();
     console.log("\x1b[35m==================================================\x1b[0m");
     console.log("\x1b[36m   🎮 GOOGLE PLAY GAMES ACHIEVEMENT UNLOCKER\x1b[0m");
-    console.log("\x1b[33m             [ Updated Version 2.0 ]            \x1b[0m");
+    console.log("\x1b[33m             [ Updated Version 2.1 ]            \x1b[0m");
     console.log("\x1b[35m==================================================\x1b[0m");
     console.log(" \x1b[32m[a]\x1b[0m Select Account & Unlock Achievements");
     console.log(" \x1b[32m[b]\x1b[0m Enter Bearer Token Manually (ya29...)");
@@ -25,13 +28,51 @@ function printHeader() {
     console.log("\x1b[35m==================================================\x1b[0m");
 }
 
-// আপনার জিমেইল অ্যাকাউন্টগুলোর লিস্ট
+// ব্লুস্ট্যাকসের রুট ডাটাবেজ থেকে রিয়েল জিমেইল অ্যাকাউন্টগুলো স্ক্যান করার ফাংশন
 function getGoogleAccounts() {
-    return [
-        "primary_gaming_acc@gmail.com",
-        "secondary_gamer_acc@gmail.com",
-        "bluestacks_pro_acc@gmail.com"
+    const su_bins = ["/system/xbin/bstk/su", "/system/xbin/su", "/sbin/su", "su"];
+    const dbs = [
+        "/data/system/users/0/accounts.db",
+        "/data/system_ce/0/accounts_ce.db",
+        "/data/system_de/0/accounts_de.db",
+        "/data/system/accounts.db"
     ];
+    
+    let accounts = [];
+    let selectedSu = null;
+
+    for (let su of su_bins) {
+        try {
+            execSync(`${su} -v`, { stdio: 'ignore' });
+            selectedSu = su;
+            break;
+        } catch (e) {}
+    }
+
+    if (!selectedSu) {
+        return [];
+    }
+
+    for (let db of dbs) {
+        try {
+            const tmpPath = path.join(require('os').tmpdir(), 'bs_acc.db');
+            const cmd = `${selectedSu} -c "cat ${db}" > ${tmpPath} 2>/dev/null`;
+            execSync(cmd);
+
+            if (fs.existsSync(tmpPath)) {
+                if (fs.statSync(tmpPath).size > 100) {
+                    const result = execSync(`strings ${tmpPath} | grep -E '^[a-zA-Z0-9._%+-]+@gmail\\.com$'`).toString();
+                    const emails = result.split('\n').filter(e => e.includes('@gmail.com'));
+                    if (emails.length > 0) {
+                        accounts.push(...emails);
+                    }
+                }
+                fs.unlinkSync(tmpPath);
+            }
+        } catch (err) {}
+    }
+
+    return [...new Set(accounts)];
 }
 
 // গুগল এপিআই দিয়ে অ্যাচিভমেন্ট আনলক করার ফাংশন
@@ -136,7 +177,7 @@ function sendUnlockRequest(token, updates) {
                     console.log("\n\x1b[32m🎉 সফলভাবে রিকোয়েস্ট সম্পন্ন হয়েছে!\x1b[0m");
                 }
             } else {
-                console.log(`\n\x1b[31m❌ আনলক ফেইল (HTTP ${res.statusCode}): ${body.substring(0, 100)}\x1b[0m`);
+                console.log(`\n\x1b[31m❌ আনলক ফেইল (HTTP ${res.statusCode}): ${body.substring(0, 100)}\x1b[0m`;
             }
             setTimeout(promptMenu, 3000);
         });
@@ -158,8 +199,17 @@ function promptMenu() {
         const cmd = answer.trim().toLowerCase();
         
         if (cmd === "a") {
+            console.log("\n\x1b[33m🔍 ব্লুস্ট্যাক্স থেকে রিয়েল জিমেইল অ্যাকাউন্ট স্ক্যান করা হচ্ছে...\x1b[0m");
             const accounts = getGoogleAccounts();
-            console.log("\n\x1b[36m📋 উপলব্ধ জিমেইল অ্যাকাউন্টসমূহ:\x1b[0m");
+            
+            if (accounts.length === 0) {
+                console.log("\n\x1b[31m❌ সিস্টেম থেকে কোনো জিমেইল অ্যাকাউন্ট পাওয়া যায়নি!\x1b[0m");
+                console.log("\x1b[33m💡 টিপস: আপনি অপশন [b] ব্যবহার করে ম্যানুয়ালি টোকেন দিতে পারেন।\x1b[0m");
+                setTimeout(promptMenu, 3000);
+                return;
+            }
+
+            console.log("\n\x1b[36m📋 ব্লুস্ট্যাক্সে লগইন করা রিয়েল অ্যাকাউন্টসমূহ:\x1b[0m");
             accounts.forEach((acc, index) => {
                 const charKey = String.fromCharCode(97 + index); // a, b, c...
                 console.log(`  \x1b[33m[${charKey}]\x1b[0m ${acc}`);
